@@ -1,0 +1,338 @@
+etb<!DOCTYPE html>
+<html>
+<head>
+  <title>Voice Based Farmer Welfare Assistant System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+    h2 {
+      color: #333;
+    }
+    button {
+      font-size: 24px;
+      padding: 20px 40px;
+      margin: 10px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:disabled {
+      background-color: #cccccc;
+    }
+    p {
+      font-size: 16px;
+      margin: 10px;
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 10px;
+      }
+      h2 {
+        font-size: 24px;
+      }
+      button {
+        font-size: 16px;
+        padding: 12px 24px;
+        width: 80%;
+        max-width: 300px;
+      }
+
+      p {
+        font-size: 14px;
+      }
+    }
+    #status {
+      font-weight: bold;
+      color: #ff6600;
+      font-size: 18px;
+    }
+    #stopBtn {
+      display: none;
+      font-size: 24px;
+      padding: 20px 40px;
+      margin: 10px;
+      cursor: pointer;
+      background-color: #f44336;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    #textInput {
+      font-size: 16px;
+      padding: 10px;
+      margin: 10px;
+      width: 60%;
+      max-width: 400px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    #submitTextBtn {
+      font-size: 18px;
+      padding: 15px 30px;
+      margin: 10px;
+      cursor: pointer;
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    @media (max-width: 600px) {
+      #stopBtn {
+        font-size: 16px;
+        padding: 12px 24px;
+        width: 80%;
+        max-width: 300px;
+      }
+      #textInput {
+        font-size: 14px;
+        padding: 8px;
+        width: 80%;
+        max-width: 300px;
+      }
+      #submitTextBtn {
+        font-size: 16px;
+        padding: 12px 24px;
+        width: 80%;
+        max-width: 300px;
+      }
+    #toggleTextBtn {
+      font-size: 20px;
+    @media (max-width: 600px) {
+      margin: 10px;
+      cursor: pointer;
+      background-color: #FF9800;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+      #toggleTextBtn {
+        font-size: 14px;
+        padding: 8px 16px;
+        width: 80%;
+        max-width: 300px;
+      }
+    }
+    }
+  </style>
+</head>
+<body>
+
+<h2>🎤 Voice Based Farmer Welfare Assistant System</h2>
+<p id="status"></p>
+<select id="langSelect">
+  <option value="te-IN">🇮🇳 Telugu</option>
+  <option value="hi-IN">🇮🇳 Hindi</option>
+  <option value="en-US">🇺🇸 English</option>
+</select>
+<div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+  <button onclick="startListening()">Speak</button>
+  <button id="stopBtn" onclick="stopListening()">Stop</button>
+</div>
+
+<p>or</p>
+
+<button id="toggleTextBtn" onclick="toggleTextInput()">Text</button>
+<div id="textInputDiv" style="display: none;">
+  <input type="text" id="textInput" placeholder="Type your query here...">
+  <button id="submitTextBtn" onclick="submitText()">Submit Text</button>
+</div>
+
+<p id="text"></p>
+<p id="reply"></p>
+
+<script>
+let recognition;
+
+const database = {
+  "farmers": [
+    {
+      "aadhaar": "123456789012",
+      "name": "Ramu",
+      "land": "2 Acres",
+      "rythu_bandhu": "credited",
+      "pm_kisan": "pending"
+    },
+    {
+      "aadhaar": "987654321098",
+      "name": "Sita",
+      "land": "1 Acre",
+      "rythu_bandhu": "pending",
+      "pm_kisan": "credited"
+    }
+  ]
+};
+
+const messages = {
+  'te': {
+    'rythu': "మీ రైతు బందు డబ్బులు {status}",
+    'pm': "మీ పీఎం కిసాన్ డబ్బులు {status}",
+    'unknown': "మీ ప్రశ్న అర్థం కాలేదు"
+  },
+  'hi': {
+    'rythu': "आपका रायथु बंधु धन {status} हो गया है",
+    'pm': "आपका पीएम किसान धन {status} हो गया है",
+    'unknown': "आपका प्रश्न समझ नहीं आया"
+  },
+  'en': {
+    'rythu': "Your Rythu Bandhu funds are {status}",
+    'pm': "Your PM Kisan funds are {status}",
+    'unknown': "I didn't understand your question"
+  }
+};
+
+const statuses = {
+  'te': {'credited': 'క్రెడిట్ అయ్యాయి', 'pending': 'పెండింగ్ లో ఉంది'},
+  'hi': {'credited': 'क्रेडिट हो गया है', 'pending': 'लंबित है'},
+  'en': {'credited': 'credited', 'pending': 'pending'}
+};
+
+function detect_lang(text) {
+  if (/[\u0C00-\u0C7F]/.test(text)) {
+    return 'te';
+  } else if (/[\u0900-\u097F]/.test(text)) {
+    return 'hi';
+  } else {
+    return 'en';
+  }
+}
+
+function check_status(user_text, lang) {
+  const aadhaar = "123456789012"; // demo user
+  let farmer = null;
+  for (let f of database.farmers) {
+    if (f.aadhaar === aadhaar) {
+      farmer = f;
+      break;
+    }
+  }
+  let msg;
+  if (user_text.includes("రైతు బందు") || user_text.includes("రైతుబంధు") || user_text.toLowerCase().includes("rythu") || user_text.includes("बंधु") || user_text.toLowerCase().includes("bandhu")) {
+    const status = farmer.rythu_bandhu;
+    msg = messages[lang]['rythu'].replace('{status}', statuses[lang][status]);
+  } else if (user_text.includes("పీఎం కిసాన్") || user_text.includes("కిసాన్") || user_text.toLowerCase().includes("pm kisan") || user_text.includes("किसान") || user_text.toLowerCase().includes("kisan")) {
+    const status = farmer.pm_kisan;
+    msg = messages[lang]['pm'].replace('{status}', statuses[lang][status]);
+  } else {
+    msg = messages[lang]['unknown'];
+  }
+  const lang_code = {'te': 'te-IN', 'hi': 'hi-IN', 'en': 'en-US'}[lang];
+  return {reply: msg, lang: lang_code};
+}
+
+function startListening(){
+  const selectedLang = document.getElementById("langSelect").value;
+  recognition = new webkitSpeechRecognition();
+  recognition.lang = selectedLang;
+  recognition.start();
+
+  const statusEl = document.getElementById("status");
+  const button = document.querySelector("button");
+  const stopBtn = document.getElementById("stopBtn");
+
+  statusEl.innerText = "🎤 Listening...";
+  button.disabled = true;
+  stopBtn.style.display = 'inline-block';
+
+  recognition.onresult = function(event){
+    const speechText = event.results[0][0].transcript;
+    document.getElementById("text").innerText = speechText;
+    statusEl.innerText = "🔄 Processing...";
+
+    const selectedLang = document.getElementById("langSelect").value;
+    const lang = selectedLang.split('-')[0];
+    const result = check_status(speechText, lang);
+    document.getElementById("reply").innerText = result.reply;
+    speak(result.reply, result.lang);
+  }
+
+  recognition.onerror = function(event){
+    statusEl.innerText = "❌ Error: " + event.error;
+    button.disabled = false;
+    stopBtn.style.display = 'none';
+  }
+
+  recognition.onend = function(){
+    stopBtn.style.display = 'none';
+    if (statusEl.innerText === "🎤 Listening...") {
+      statusEl.innerText = "No speech detected.";
+      button.disabled = false;
+    }
+  }
+}
+
+function stopListening(){
+  if (recognition) {
+    recognition.stop();
+  }
+  const statusEl = document.getElementById("status");
+  const button = document.querySelector("button");
+  const stopBtn = document.getElementById("stopBtn");
+
+  statusEl.innerText = "Stopped";
+  button.disabled = false;
+  stopBtn.style.display = 'none';
+}
+
+function speak(text, lang="te-IN"){
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = lang;
+
+  const statusEl = document.getElementById("status");
+  const button = document.querySelector("button");
+
+  statusEl.innerText = "🔊 Speaking...";
+
+  utter.onend = function(){
+    statusEl.innerText = "Ready";
+    button.disabled = false;
+  }
+
+  speechSynthesis.speak(utter);
+}
+
+function submitText(){
+  const textInput = document.getElementById("textInput").value.trim();
+  if (!textInput) {
+    alert("Please enter some text.");
+    return;
+  }
+
+  const selectedLang = document.getElementById("langSelect").value;
+  const statusEl = document.getElementById("status");
+  const submitBtn = document.getElementById("submitTextBtn");
+
+  statusEl.innerText = "🔄 Processing...";
+  submitBtn.disabled = true;
+
+  document.getElementById("text").innerText = textInput;
+
+  const lang = selectedLang.split('-')[0];
+  const result = check_status(textInput, lang);
+  document.getElementById("reply").innerText = result.reply;
+  speak(result.reply, result.lang);
+  document.getElementById("textInput").value = ""; // Clear input
+}
+
+function toggleTextInput(){
+  const textInputDiv = document.getElementById("textInputDiv");
+  const toggleBtn = document.getElementById("toggleTextBtn");
+
+  if (textInputDiv.style.display === "none") {
+    textInputDiv.style.display = "block";
+    toggleBtn.innerText = "Hide Text Input";
+  } else {
+    textInputDiv.style.display = "none";
+    toggleBtn.innerText = "Show Text Input";
+  }
+}
+</script>
+
+</body>
+</html>
