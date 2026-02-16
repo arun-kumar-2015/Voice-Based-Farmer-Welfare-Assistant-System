@@ -1,0 +1,18 @@
+{
+  "farmers": [
+    {
+      "aadhaar": "123456789012",
+      "name": "Ramu",
+      "land": "2 Acres",
+      "rythu_bandhu": "credited",
+      "pm_kisan": "pending"
+    },
+    {
+      "aadhaar": "987654321098",
+      "name": "Sita",
+      "land": "1 Acre",
+      "rythu_bandhu": "pending",
+      "pm_kisan": "credited"
+    }
+  ]
+}
